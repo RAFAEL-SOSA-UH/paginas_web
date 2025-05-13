@@ -13,6 +13,25 @@ app.use(cors());
 // Para manejar datos en formato JSON en el cuerpo de las solicitudes
 app.use(express.json());
 
+// ==== MIDDLEWARE PARA VERIFICAR EL TOKEN ====
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization']; // Ejemplo: "Bearer TU_TOKEN"
+  const token = authHeader && authHeader.split(' ')[1]; // Extrae solo el token
+
+  if (!token) {
+    return res.status(401).json({ error: 'No autorizado: Token faltante' });
+  }
+
+  jwt.verify(token, 'tu_secreto', (err, user) => { // Usa el MISMO secreto que en jwt.sign()
+    if (err) {
+      return res.status(403).json({ error: 'No autorizado: Token inválido o expirado' });
+    }
+    req.user = user; // Guarda los datos del usuario en la request
+    next(); // Pasa al siguiente paso (la ruta protegida)
+  });
+}
+
+
 // Conexión a la base de datos MySQL
 const db = mysql.createConnection({
   host: 'localhost',
@@ -82,7 +101,7 @@ app.post('/api/login', (req, res) => {
         return res.status(400).json({ error: 'Contraseña incorrecta' });
       }
 
-      // Opcional: Crear un token JWT para la sesión
+      // Crear un token JWT para la sesión
       const token = jwt.sign({ id: user.id, nombre: user.nombre }, 'tu_secreto', { expiresIn: '1h' });
 
       // Devolver el token y un mensaje de éxito
